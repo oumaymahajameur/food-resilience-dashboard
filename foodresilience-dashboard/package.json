@@ -1,5 +1,5 @@
 {
-  "name": "foodresilience",
+  "name": "foodresilience-dashboard",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,23 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.96.0",
-    "@fontsource/share-tech-mono": "^5.2.7",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
-    "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.104.0",
-    "@types/three": "^0.184.0",
+    "@supabase/supabase-js": "^2.103.0",
     "d3": "^7.9.0",
-    "express": "^5.2.1",
-    "jspdf": "^4.2.1",
-    "next": "16.2.1",
-    "pg": "^8.20.0",
+    "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.8.1",
-    "three": "^0.183.2",
     "topojson-client": "^3.1.0"
   },
   "devDependencies": {
@@ -35,9 +23,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/topojson-client": "^3.1.5",
+    "autoprefixer": "^10.4.27",
     "eslint": "^9",
-    "eslint-config-next": "16.2.1",
-    "tailwindcss": "^4",
+    "eslint-config-next": "16.2.2",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5"
   }
 }

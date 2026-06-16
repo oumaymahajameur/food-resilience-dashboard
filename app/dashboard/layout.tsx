@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import { Orbitron, Share_Tech_Mono } from "next/font/google";
+import Topbar from "@/foodresilience-dashboard/components/Topbar";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -31,6 +31,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${orbitron.variable} ${shareTechMono.variable}`}>
+        <Topbar/>
         {children}
     
       </body>
