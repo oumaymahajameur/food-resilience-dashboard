@@ -85,7 +85,7 @@ function buildCards(states: StateData[], national: NationalStats): MetricCardPro
   const avgAccess  = pillarAvg("access_score");
   const avgTransit = pillarAvg("transit_score");
   const avgIncome  = pillarAvg("income_score");
-  const avgXpi     = pillarAvg("cpi_score");
+   const avgXpi = pillarAvg("cpi_score");
 
   const sorted = [...states].sort((a, b) => n(b.composite_score) - n(a.composite_score));
   const top9 = sorted.slice(0, 9);

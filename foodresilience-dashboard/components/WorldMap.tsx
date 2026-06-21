@@ -44,6 +44,7 @@ const FIPS_TO_CODE: Record<string, string> = {
 export default function Map() {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const usDataRef = useRef<any>(null);
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, state: null });
   const [selectedState, setSelectedState] = useState<StateData | null>(null);
   const [isRendered, setIsRendered] = useState(false);
@@ -72,154 +73,178 @@ export default function Map() {
 
   useEffect(() => {
     if (loading || !states.length) return;
-    const svg = d3.select(svgRef.current);
     const container = containerRef.current;
     if (!container) return;
 
-    const width = container.clientWidth || 700;
-    const height = container.clientHeight || 500;
-
-    svg.attr("width", width).attr("height", height).style("background", "transparent");
-    svg.selectAll("*").remove();
-
-    const defs = svg.append("defs");
-
-    const glowFilter = defs.append("filter").attr("id", "glow").attr("x", "-30%").attr("y", "-30%").attr("width", "160%").attr("height", "160%");
-    glowFilter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "coloredBlur");
-    const feMerge = glowFilter.append("feMerge");
-    feMerge.append("feMergeNode").attr("in", "coloredBlur");
-    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
-    const strongGlow = defs.append("filter").attr("id", "strongGlow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
-    strongGlow.append("feGaussianBlur").attr("stdDeviation", "8").attr("result", "coloredBlur");
-    const sm2 = strongGlow.append("feMerge");
-    sm2.append("feMergeNode").attr("in", "coloredBlur");
-    sm2.append("feMergeNode").attr("in", "SourceGraphic");
-
-    const radialGrad = defs.append("radialGradient").attr("id", "globeBg").attr("cx", "50%").attr("cy", "45%").attr("r", "55%");
-    radialGrad.append("stop").attr("offset", "0%").attr("stop-color", "#0d2137").attr("stop-opacity", "0.9");
-    radialGrad.append("stop").attr("offset", "60%").attr("stop-color", "#061523").attr("stop-opacity", "0.95");
-    radialGrad.append("stop").attr("offset", "100%").attr("stop-color", "#020d18").attr("stop-opacity", "1");
-
-    const rimGrad = defs.append("radialGradient").attr("id", "rimGrad").attr("cx", "50%").attr("cy", "50%").attr("r", "50%");
-    rimGrad.append("stop").attr("offset", "75%").attr("stop-color", "transparent");
-    rimGrad.append("stop").attr("offset", "88%").attr("stop-color", "#00b4d8").attr("stop-opacity", "0.08");
-    rimGrad.append("stop").attr("offset", "93%").attr("stop-color", "#00f5d4").attr("stop-opacity", "0.35");
-    rimGrad.append("stop").attr("offset", "96%").attr("stop-color", "#00f5d4").attr("stop-opacity", "0.6");
-    rimGrad.append("stop").attr("offset", "100%").attr("stop-color", "#00b4d8").attr("stop-opacity", "0.15");
-
-    const clipRadius = Math.min(width, height) * 0.46;
-    const cx = width / 2;
-    const cy = height / 2 + 6;
-
-    defs.append("clipPath").attr("id", "globeClip")
-      .append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius);
-
-    const globeGroup = svg.append("g").attr("class", "globe");
-    globeGroup.append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius).attr("fill", "url(#globeBg)");
-
-    const gridGroup = globeGroup.append("g").attr("clip-path", "url(#globeClip)").attr("opacity", 0.08);
-    for (let i = 1; i < 8; i++) {
-      gridGroup.append("line")
-        .attr("x1", cx - clipRadius).attr("y1", cy - clipRadius + (i * clipRadius * 2) / 8)
-        .attr("x2", cx + clipRadius).attr("y2", cy - clipRadius + (i * clipRadius * 2) / 8)
-        .attr("stroke", "#00f5d4").attr("stroke-width", 0.5);
-      gridGroup.append("line")
-        .attr("x1", cx - clipRadius + (i * clipRadius * 2) / 8).attr("y1", cy - clipRadius)
-        .attr("x2", cx - clipRadius + (i * clipRadius * 2) / 8).attr("y2", cy + clipRadius)
-        .attr("stroke", "#00f5d4").attr("stroke-width", 0.5);
+    function getUsData(): Promise<any> {
+      if (usDataRef.current) return Promise.resolve(usDataRef.current);
+      return fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
+        .then((r) => r.json())
+        .then((us) => {
+          usDataRef.current = us;
+          return us;
+        });
     }
 
-    const mapGroup = globeGroup.append("g").attr("clip-path", "url(#globeClip)").attr("class", "states-group");
-    const projection = d3.geoAlbersUsa().scale(clipRadius * 1.85).translate([cx, cy + 5]);
-    const path = d3.geoPath().projection(projection);
+    function draw() {
+      const svg = d3.select(svgRef.current);
+      const width = container!.clientWidth || 700;
+      const height = container!.clientHeight || 500;
 
-    fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
-      .then((r) => r.json())
-      .then((us: any) => {
-        const statesFeature = topojson.feature(us, us.objects.states) as any;
-        mapGroup.selectAll<SVGPathElement, any>(".state")
-          .data(statesFeature.features)
-          .enter().append("path").attr("class", "state")
-          .attr("d", path as any)
-          .attr("fill", (d: any) => {
-            const fips = d.id.toString().padStart(2, "0");
-            const code = FIPS_TO_CODE[fips];
-            const stateData = code ? stateMap[code] : null;
-            return stateData ? getRiskColor(Number(stateData.composite_score)) : "#0a2a3a";
-          })
-          .attr("fill-opacity", 0.72).attr("stroke", "#00f5d4")
-          .attr("stroke-width", 0.6).attr("stroke-opacity", 0.5)
-          .attr("filter", "url(#glow)").style("cursor", "pointer").style("transition", "fill-opacity 0.2s")
-          .on("mousemove", function (event: MouseEvent, d: any) {
-            const fips = d.id.toString().padStart(2, "0");
-            const code = FIPS_TO_CODE[fips];
-            const stateData = code ? stateMap[code] : null;
-            if (!stateData) return;
-            d3.select(this).attr("fill-opacity", 1).attr("filter", "url(#strongGlow)");
-            const rect = container.getBoundingClientRect();
-            setTooltip({ visible: true, x: event.clientX - rect.left, y: event.clientY - rect.top, state: stateData });
-          })
-          .on("mouseleave", function () {
-            d3.select(this).attr("fill-opacity", 0.72).attr("filter", "url(#glow)");
-            setTooltip((t) => ({ ...t, visible: false }));
-          })
-          .on("click", (_: any, d: any) => {
-            const fips = d.id.toString().padStart(2, "0");
-            const code = FIPS_TO_CODE[fips];
-            const stateData = code ? stateMap[code] : null;
-            if (stateData) setSelectedState(stateData);
-          });
+      svg.attr("width", width).attr("height", height).style("background", "transparent");
+      svg.selectAll("*").remove();
 
-        mapGroup.append("path")
-          .datum(topojson.mesh(us, us.objects.states, (a: any, b: any) => a !== b))
+      const defs = svg.append("defs");
+
+      const glowFilter = defs.append("filter").attr("id", "glow").attr("x", "-30%").attr("y", "-30%").attr("width", "160%").attr("height", "160%");
+      glowFilter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "coloredBlur");
+      const feMerge = glowFilter.append("feMerge");
+      feMerge.append("feMergeNode").attr("in", "coloredBlur");
+      feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+      const strongGlow = defs.append("filter").attr("id", "strongGlow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+      strongGlow.append("feGaussianBlur").attr("stdDeviation", "8").attr("result", "coloredBlur");
+      const sm2 = strongGlow.append("feMerge");
+      sm2.append("feMergeNode").attr("in", "coloredBlur");
+      sm2.append("feMergeNode").attr("in", "SourceGraphic");
+
+      const radialGrad = defs.append("radialGradient").attr("id", "globeBg").attr("cx", "50%").attr("cy", "45%").attr("r", "55%");
+      radialGrad.append("stop").attr("offset", "0%").attr("stop-color", "#0d2137").attr("stop-opacity", "0.9");
+      radialGrad.append("stop").attr("offset", "60%").attr("stop-color", "#061523").attr("stop-opacity", "0.95");
+      radialGrad.append("stop").attr("offset", "100%").attr("stop-color", "#020d18").attr("stop-opacity", "1");
+
+      const rimGrad = defs.append("radialGradient").attr("id", "rimGrad").attr("cx", "50%").attr("cy", "50%").attr("r", "50%");
+      rimGrad.append("stop").attr("offset", "75%").attr("stop-color", "transparent");
+      rimGrad.append("stop").attr("offset", "88%").attr("stop-color", "#00b4d8").attr("stop-opacity", "0.08");
+      rimGrad.append("stop").attr("offset", "93%").attr("stop-color", "#00f5d4").attr("stop-opacity", "0.35");
+      rimGrad.append("stop").attr("offset", "96%").attr("stop-color", "#00f5d4").attr("stop-opacity", "0.6");
+      rimGrad.append("stop").attr("offset", "100%").attr("stop-color", "#00b4d8").attr("stop-opacity", "0.15");
+
+      const clipRadius = Math.min(width, height) * 0.46;
+      const cx = width / 2;
+      const cy = height / 2 + 6;
+
+      defs.append("clipPath").attr("id", "globeClip")
+        .append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius);
+
+      const globeGroup = svg.append("g").attr("class", "globe");
+      globeGroup.append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius).attr("fill", "url(#globeBg)");
+
+      const gridGroup = globeGroup.append("g").attr("clip-path", "url(#globeClip)").attr("opacity", 0.08);
+      for (let i = 1; i < 8; i++) {
+        gridGroup.append("line")
+          .attr("x1", cx - clipRadius).attr("y1", cy - clipRadius + (i * clipRadius * 2) / 8)
+          .attr("x2", cx + clipRadius).attr("y2", cy - clipRadius + (i * clipRadius * 2) / 8)
+          .attr("stroke", "#00f5d4").attr("stroke-width", 0.5);
+        gridGroup.append("line")
+          .attr("x1", cx - clipRadius + (i * clipRadius * 2) / 8).attr("y1", cy - clipRadius)
+          .attr("x2", cx - clipRadius + (i * clipRadius * 2) / 8).attr("y2", cy + clipRadius)
+          .attr("stroke", "#00f5d4").attr("stroke-width", 0.5);
+      }
+
+      const mapGroup = globeGroup.append("g").attr("clip-path", "url(#globeClip)").attr("class", "states-group");
+      const projection = d3.geoAlbersUsa().scale(clipRadius * 1.85).translate([cx, cy + 5]);
+      const path = d3.geoPath().projection(projection);
+
+      getUsData()
+        .then((us: any) => {
+          const statesFeature = topojson.feature(us, us.objects.states) as any;
+          mapGroup.selectAll<SVGPathElement, any>(".state")
+            .data(statesFeature.features)
+            .enter().append("path").attr("class", "state")
+            .attr("d", path as any)
+            .attr("fill", (d: any) => {
+              const fips = d.id.toString().padStart(2, "0");
+              const code = FIPS_TO_CODE[fips];
+              const stateData = code ? stateMap[code] : null;
+              return stateData ? getRiskColor(Number(stateData.composite_score)) : "#0a2a3a";
+            })
+            .attr("fill-opacity", 0.72).attr("stroke", "#00f5d4")
+            .attr("stroke-width", 0.6).attr("stroke-opacity", 0.5)
+            .attr("filter", "url(#glow)").style("cursor", "pointer").style("transition", "fill-opacity 0.2s")
+            .on("mousemove", function (event: MouseEvent, d: any) {
+              const fips = d.id.toString().padStart(2, "0");
+              const code = FIPS_TO_CODE[fips];
+              const stateData = code ? stateMap[code] : null;
+              if (!stateData) return;
+              d3.select(this).attr("fill-opacity", 1).attr("filter", "url(#strongGlow)");
+              const rect = container!.getBoundingClientRect();
+              setTooltip({ visible: true, x: event.clientX - rect.left, y: event.clientY - rect.top, state: stateData });
+            })
+            .on("mouseleave", function () {
+              d3.select(this).attr("fill-opacity", 0.72).attr("filter", "url(#glow)");
+              setTooltip((t) => ({ ...t, visible: false }));
+            })
+            .on("click", (_: any, d: any) => {
+              const fips = d.id.toString().padStart(2, "0");
+              const code = FIPS_TO_CODE[fips];
+              const stateData = code ? stateMap[code] : null;
+              if (stateData) setSelectedState(stateData);
+            });
+
+          mapGroup.append("path")
+            .datum(topojson.mesh(us, us.objects.states, (a: any, b: any) => a !== b))
+            .attr("fill", "none").attr("stroke", "#00f5d4")
+            .attr("stroke-width", 0.4).attr("stroke-opacity", 0.3).attr("d", path as any);
+
+          setIsRendered(true);
+        })
+        .catch(() => setIsRendered(true));
+
+      globeGroup.append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius)
+        .attr("fill", "url(#rimGrad)").attr("pointer-events", "none");
+
+      [1.07, 1.13, 1.20].forEach((r, i) => {
+        globeGroup.append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius * r)
           .attr("fill", "none").attr("stroke", "#00f5d4")
-          .attr("stroke-width", 0.4).attr("stroke-opacity", 0.3).attr("d", path as any);
+          .attr("stroke-width", i === 0 ? 1.5 : i === 1 ? 0.8 : 0.4)
+          .attr("stroke-opacity", i === 0 ? 0.7 : i === 1 ? 0.3 : 0.15)
+          .attr("stroke-dasharray", i === 1 ? "4 6" : i === 2 ? "2 8" : "none")
+          .attr("filter", i === 0 ? "url(#glow)" : "none");
+      });
 
-        setIsRendered(true);
-      })
-      .catch(() => setIsRendered(true));
+      const tickCount = 72;
+      for (let i = 0; i < tickCount; i++) {
+        const angle = (i / tickCount) * 2 * Math.PI;
+        const r1 = clipRadius * 1.07;
+        const r2 = clipRadius * (i % 6 === 0 ? 1.115 : 1.09);
+        globeGroup.append("line")
+          .attr("x1", cx + r1 * Math.cos(angle)).attr("y1", cy + r1 * Math.sin(angle))
+          .attr("x2", cx + r2 * Math.cos(angle)).attr("y2", cy + r2 * Math.sin(angle))
+          .attr("stroke", "#00f5d4")
+          .attr("stroke-width", i % 6 === 0 ? 1 : 0.5)
+          .attr("stroke-opacity", i % 6 === 0 ? 0.8 : 0.3);
+      }
 
-    globeGroup.append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius)
-      .attr("fill", "url(#rimGrad)").attr("pointer-events", "none");
-
-    [1.07, 1.13, 1.20].forEach((r, i) => {
-      globeGroup.append("circle").attr("cx", cx).attr("cy", cy).attr("r", clipRadius * r)
-        .attr("fill", "none").attr("stroke", "#00f5d4")
-        .attr("stroke-width", i === 0 ? 1.5 : i === 1 ? 0.8 : 0.4)
-        .attr("stroke-opacity", i === 0 ? 0.7 : i === 1 ? 0.3 : 0.15)
-        .attr("stroke-dasharray", i === 1 ? "4 6" : i === 2 ? "2 8" : "none")
-        .attr("filter", i === 0 ? "url(#glow)" : "none");
-    });
-
-    const tickCount = 72;
-    for (let i = 0; i < tickCount; i++) {
-      const angle = (i / tickCount) * 2 * Math.PI;
-      const r1 = clipRadius * 1.07;
-      const r2 = clipRadius * (i % 6 === 0 ? 1.115 : 1.09);
-      globeGroup.append("line")
-        .attr("x1", cx + r1 * Math.cos(angle)).attr("y1", cy + r1 * Math.sin(angle))
-        .attr("x2", cx + r2 * Math.cos(angle)).attr("y2", cy + r2 * Math.sin(angle))
-        .attr("stroke", "#00f5d4")
-        .attr("stroke-width", i % 6 === 0 ? 1 : 0.5)
-        .attr("stroke-opacity", i % 6 === 0 ? 0.8 : 0.3);
+      const cornerSize = 18;
+      [[20, 20, 1, 1],[width - 20, 20, -1, 1],[20, height - 20, 1, -1],[width - 20, height - 20, -1, -1]].forEach(([x, y, sx, sy]) => {
+        svg.append("path")
+          .attr("d", `M ${x} ${y + sy * cornerSize} L ${x} ${y} L ${x + sx * cornerSize} ${y}`)
+          .attr("fill", "none").attr("stroke", "#00f5d4")
+          .attr("stroke-width", 1.5).attr("stroke-opacity", 0.6);
+      });
     }
 
-    const cornerSize = 18;
-    [[20, 20, 1, 1],[width - 20, 20, -1, 1],[20, height - 20, 1, -1],[width - 20, height - 20, -1, -1]].forEach(([x, y, sx, sy]) => {
-      svg.append("path")
-        .attr("d", `M ${x} ${y + sy * cornerSize} L ${x} ${y} L ${x + sx * cornerSize} ${y}`)
-        .attr("fill", "none").attr("stroke", "#00f5d4")
-        .attr("stroke-width", 1.5).attr("stroke-opacity", 0.6);
-    });
+    draw();
 
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(draw, 150);
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(resizeTimer);
+    };
   }, [states, loading]);
 
   const scanRad = scanAngle * (Math.PI / 180);
   const isLoading = loading || !isRendered;
 
   return (
-    <div style={{
+    <div className="nrg-root" style={{
       position: "relative", width: "100%", height: "100%", minHeight: 520,
       background: "linear-gradient(135deg, #020d18 0%, #040f1e 50%, #020c16 100%)",
       fontFamily: "'Rajdhani', 'Share Tech Mono', monospace",
@@ -242,12 +267,12 @@ export default function Map() {
 
       {/* ── MOST AT RISK / MOST RESILIENT — LEFT, large & visible ── */}
       {!loading && worstState && bestState && (
-        <div style={{
+        <div className="nrg-left-panel" style={{
           position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)",
           zIndex: 10, display: "flex", flexDirection: "column", gap: 14,
         }}>
           {/* Most At Risk */}
-          <div style={{
+          <div className="nrg-stat-box nrg-stat-box-bad" style={{
             background: "rgba(239,35,60,0.08)",
             border: "1px solid rgba(239,35,60,0.4)",
             borderLeft: "3px solid #ef233c",
@@ -258,10 +283,10 @@ export default function Map() {
             <div style={{ color: "rgba(239,35,60,0.6)", fontSize: 8, letterSpacing: 3, fontFamily: "monospace", marginBottom: 6 }}>
               MOST AT RISK
             </div>
-            <div style={{ color: "#ef233c", fontSize: 32, fontWeight: 700, letterSpacing: 2, lineHeight: 1, textShadow: "0 0 16px rgba(239,35,60,0.8)", fontFamily: "monospace" }}>
+            <div className="nrg-stat-value" style={{ color: "#ef233c", fontSize: 32, fontWeight: 700, letterSpacing: 2, lineHeight: 1, textShadow: "0 0 16px rgba(239,35,60,0.8)", fontFamily: "monospace" }}>
               {worstState.state_code}
             </div>
-            <div style={{ color: "rgba(239,35,60,0.7)", fontSize: 18, fontWeight: 600, marginTop: 4, fontFamily: "monospace" }}>
+            <div className="nrg-stat-score" style={{ color: "rgba(239,35,60,0.7)", fontSize: 18, fontWeight: 600, marginTop: 4, fontFamily: "monospace" }}>
               {Number(worstState.composite_score).toFixed(1)}
             </div>
             <div style={{ marginTop: 8, height: 2, background: "rgba(239,35,60,0.15)", borderRadius: 1 }}>
@@ -270,10 +295,10 @@ export default function Map() {
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: "rgba(0,245,212,0.1)", margin: "0 8px" }} />
+          <div className="nrg-divider" style={{ height: 1, background: "rgba(0,245,212,0.1)", margin: "0 8px" }} />
 
           {/* Most Resilient */}
-          <div style={{
+          <div className="nrg-stat-box nrg-stat-box-good" style={{
             background: "rgba(0,245,212,0.05)",
             border: "1px solid rgba(0,245,212,0.3)",
             borderLeft: "3px solid #00f5d4",
@@ -284,10 +309,10 @@ export default function Map() {
             <div style={{ color: "rgba(0,245,212,0.5)", fontSize: 8, letterSpacing: 3, fontFamily: "monospace", marginBottom: 6 }}>
               MOST RESILIENT
             </div>
-            <div style={{ color: "#00f5d4", fontSize: 32, fontWeight: 700, letterSpacing: 2, lineHeight: 1, textShadow: "0 0 16px rgba(0,245,212,0.8)", fontFamily: "monospace" }}>
+            <div className="nrg-stat-value" style={{ color: "#00f5d4", fontSize: 32, fontWeight: 700, letterSpacing: 2, lineHeight: 1, textShadow: "0 0 16px rgba(0,245,212,0.8)", fontFamily: "monospace" }}>
               {bestState.state_code}
             </div>
-            <div style={{ color: "rgba(0,245,212,0.7)", fontSize: 18, fontWeight: 600, marginTop: 4, fontFamily: "monospace" }}>
+            <div className="nrg-stat-score" style={{ color: "rgba(0,245,212,0.7)", fontSize: 18, fontWeight: 600, marginTop: 4, fontFamily: "monospace" }}>
               {Number(bestState.composite_score).toFixed(1)}
             </div>
             <div style={{ marginTop: 8, height: 2, background: "rgba(0,245,212,0.1)", borderRadius: 1 }}>
@@ -298,7 +323,7 @@ export default function Map() {
       )}
 
       {/* ── RISK LEVELS — top right ── */}
-      <div style={{
+      <div className="nrg-legend-panel" style={{
         position: "absolute", top: 16, right: 16, zIndex: 10,
         background: "rgba(0,20,40,0.85)", border: "1px solid rgba(0,245,212,0.2)",
         borderRadius: 6, padding: "10px 14px", backdropFilter: "blur(8px)",
@@ -312,22 +337,22 @@ export default function Map() {
           { label: "HIGH RISK", range: "45–59",  color: "#f77f00" },
           { label: "CRITICAL",  range: "0–44",   color: "#ef233c" },
         ].map((item) => (
-          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+          <div key={item.label} className="nrg-legend-row" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: item.color, boxShadow: `0 0 6px ${item.color}`, flexShrink: 0 }} />
             <div>
               <div style={{ color: item.color, fontSize: 9, fontWeight: 700, letterSpacing: 1, fontFamily: "monospace" }}>{item.label}</div>
-              <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 8, fontFamily: "monospace" }}>{item.range}</div>
+              <div className="nrg-legend-range" style={{ color: "rgba(255,255,255,0.25)", fontSize: 8, fontFamily: "monospace" }}>{item.range}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* ── Title — top left, no logo ── */}
-      <div style={{ position: "absolute", top: 16, left: 18, zIndex: 10 }}>
-        <div style={{ color: "rgba(0,245,212,0.45)", fontSize: 8, letterSpacing: 3, fontFamily: "monospace" }}>
+      <div className="nrg-title-panel" style={{ position: "absolute", top: 16, left: 18, zIndex: 10 }}>
+        <div className="nrg-title-eyebrow" style={{ color: "rgba(0,245,212,0.45)", fontSize: 8, letterSpacing: 3, fontFamily: "monospace" }}>
           GEOSPATIAL · RISK INTELLIGENCE
         </div>
-        <div style={{ color: "#00f5d4", fontSize: 17, fontWeight: 700, letterSpacing: 3, textShadow: "0 0 16px rgba(0,245,212,0.7)", lineHeight: 1.2 }}>
+        <div className="nrg-title-main" style={{ color: "#00f5d4", fontSize: 17, fontWeight: 700, letterSpacing: 3, textShadow: "0 0 16px rgba(0,245,212,0.7)", lineHeight: 1.2 }}>
           NATIONAL RESILIENCE GRID
         </div>
       </div>
@@ -364,7 +389,7 @@ export default function Map() {
 
       {/* Tooltip */}
       {tooltip.visible && tooltip.state && (
-        <div style={{
+        <div className="nrg-tooltip" style={{
           position: "absolute", left: tooltip.x + 16, top: tooltip.y - 80, zIndex: 100,
           background: "rgba(2,13,24,0.95)", border: `1px solid ${getRiskColor(Number(tooltip.state.composite_score))}`,
           borderRadius: 6, padding: "10px 14px", minWidth: 200,
@@ -397,7 +422,7 @@ export default function Map() {
 
       {/* Selected state panel */}
       {selectedState && (
-        <div style={{
+        <div className="nrg-bottom-panel" style={{
           position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)",
           zIndex: 20, background: "rgba(2,13,24,0.95)",
           border: `1px solid ${getRiskColor(Number(selectedState.composite_score))}`,
@@ -413,7 +438,7 @@ export default function Map() {
             </div>
             <div style={{ color: "rgba(0,245,212,0.4)", fontSize: 9, marginTop: 2, fontFamily: "monospace" }}>{selectedState.region} · {selectedState.division}</div>
           </div>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div className="nrg-bottom-stats" style={{ display: "flex", gap: 16 }}>
             {[
               { label: "COMPOSITE", value: Number(selectedState.composite_score).toFixed(1) },
               { label: "CPI", value: Number(selectedState.cpi_score).toFixed(1) },
@@ -451,6 +476,49 @@ export default function Map() {
         @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
         @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+          .nrg-title-eyebrow { font-size: 7px !important; }
+          .nrg-title-main { font-size: 14px !important; }
+          .nrg-legend-panel { padding: 8px 10px !important; }
+        }
+
+        @media (max-width: 600px) {
+          .nrg-root { min-height: 460px !important; }
+          .nrg-left-panel {
+            left: 50% !important;
+            top: auto !important;
+            bottom: 10px !important;
+            transform: translateX(-50%) !important;
+            flex-direction: row !important;
+            gap: 10px !important;
+          }
+          .nrg-divider { display: none !important; }
+          .nrg-stat-box { padding: 8px 12px !important; min-width: 92px !important; }
+          .nrg-stat-value { font-size: 22px !important; }
+          .nrg-stat-score { font-size: 13px !important; }
+          .nrg-title-panel { top: 10px !important; left: 10px !important; }
+          .nrg-title-main { font-size: 12px !important; letter-spacing: 1.5px !important; }
+          .nrg-legend-panel { top: 10px !important; right: 10px !important; padding: 6px 8px !important; }
+          .nrg-legend-range { display: none !important; }
+          .nrg-bottom-panel {
+            min-width: unset !important;
+            width: 92vw !important;
+            max-width: 92vw !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            padding: 10px 14px !important;
+          }
+          .nrg-bottom-stats { overflow-x: auto !important; justify-content: flex-start !important; }
+          .nrg-tooltip { max-width: 70vw !important; min-width: unset !important; }
+        }
+
+        @media (max-width: 400px) {
+          .nrg-stat-box { min-width: 78px !important; padding: 6px 10px !important; }
+          .nrg-stat-value { font-size: 18px !important; }
+          .nrg-stat-score { font-size: 11px !important; }
+        }
       `}</style>
     </div>
   );

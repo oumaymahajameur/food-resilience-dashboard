@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Orbitron, Share_Tech_Mono } from "next/font/google";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -32,7 +33,7 @@ export default function RootLayout({
       </head>
       <body className={`${orbitron.variable} ${shareTechMono.variable}`}>
         {children}
-    
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

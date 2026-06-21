@@ -11,7 +11,7 @@ export interface DBState {
   division: string;
   population_2020: number;
   area_sq_miles: number;
-  xpi_score: number;
+  cpi_score: number;
   access_score: number;
   transit_score: number;
   income_score: number;
@@ -187,7 +187,7 @@ function stateTableHTML(sorted: DBState[]) {
       <td style="padding:8px 12px;font-weight:700;color:#111827">${s.state_code}</td>
       <td style="padding:8px 12px;color:#111827">${s.state_name}</td>
       <td style="padding:8px 12px;color:#374151">${s.region}</td>
-      <td style="padding:8px 12px;text-align:center">${Math.round(Number(s.xpi_score))}</td>
+      <td style="padding:8px 12px;text-align:center">${Math.round(Number(s.cpi_score))}</td>
       <td style="padding:8px 12px;text-align:center">${Math.round(Number(s.access_score))}</td>
       <td style="padding:8px 12px;text-align:center">${Math.round(Number(s.transit_score))}</td>
       <td style="padding:8px 12px;text-align:center">${Math.round(Number(s.income_score))}</td>
@@ -330,7 +330,7 @@ export function buildStateDeepAnalysis(states: DBState[]): string {
     const score = Math.round(Number(s.composite_score));
     const color = tierColor(score);
     const factors = [
-      { name: "CPI Score", value: Math.round(Number(s.xpi_score)) },
+      { name: "CPI Score", value: Math.round(Number(s.cpi_score)) },
       { name: "Access Score", value: Math.round(Number(s.access_score)) },
       { name: "Transit Score", value: Math.round(Number(s.transit_score)) },
       { name: "Income Score", value: Math.round(Number(s.income_score)) },
@@ -399,7 +399,7 @@ export function buildStateDeepAnalysis(states: DBState[]): string {
         <tbody>
           ${sorted.map((s, i) => {
             const factors = [
-              { name: "CPI",     value: Math.round(Number(s.xpi_score))     },
+              { name: "CPI",     value: Math.round(Number(s.cpi_score))     },
               { name: "Access",  value: Math.round(Number(s.access_score))  },
               { name: "Transit", value: Math.round(Number(s.transit_score)) },
               { name: "Income",  value: Math.round(Number(s.income_score))  },
@@ -583,7 +583,7 @@ export function buildExecutiveDashboard(states: DBState[], stats?: NationalStats
             <td style="padding:9px 12px;font-weight:700;color:#c0002a">${s.state_code} · ${s.state_name}</td>
             <td style="padding:9px 12px;color:#6b7280">${s.region}</td>
             <td style="padding:9px 12px;font-weight:900;color:#c0002a;font-size:16px">${Math.round(Number(s.composite_score))}</td>
-            <td style="padding:9px 12px;color:${tierColor(Math.round(Number(s.xpi_score)))};font-weight:700">${Math.round(Number(s.xpi_score))}</td>
+            <td style="padding:9px 12px;color:${tierColor(Math.round(Number(s.cpi_score)))};font-weight:700">${Math.round(Number(s.cpi_score))}</td>
             <td style="padding:9px 12px;color:${tierColor(Math.round(Number(s.access_score)))};font-weight:700">${Math.round(Number(s.access_score))}</td>
             <td style="padding:9px 12px;color:${tierColor(Math.round(Number(s.transit_score)))};font-weight:700">${Math.round(Number(s.transit_score))}</td>
             <td style="padding:9px 12px;color:${tierColor(Math.round(Number(s.income_score)))};font-weight:700">${Math.round(Number(s.income_score))}</td>
@@ -710,7 +710,7 @@ export function buildAIIntelligenceBrief(states: DBState[]): string {
   // Génère une narrative depuis les vraies données
   function generateNarrative(s: DBState): { type: "leader" | "rising" | "risk"; label: string; labelBg: string; labelColor: string; text: string } {
     const score = Math.round(Number(s.composite_score));
-    const cpi = Math.round(Number(s.xpi_score));
+    const cpi = Math.round(Number(s.cpi_score));
     const access = Math.round(Number(s.access_score));
     const transit = Math.round(Number(s.transit_score));
     const income = Math.round(Number(s.income_score));
@@ -774,7 +774,7 @@ export function buildAIIntelligenceBrief(states: DBState[]): string {
     const n = generateNarrative(s);
     const color = tierColor(score);
     const factors = [
-      { name: "CPI",     value: Math.round(Number(s.xpi_score))     },
+      { name: "CPI",     value: Math.round(Number(s.cpi_score))     },
       { name: "Access",  value: Math.round(Number(s.access_score))  },
       { name: "Transit", value: Math.round(Number(s.transit_score)) },
       { name: "Income",  value: Math.round(Number(s.income_score))  },
@@ -833,7 +833,7 @@ export function buildAIIntelligenceBrief(states: DBState[]): string {
         <tbody>
           ${sorted.map((s, i) => {
             const scores = [
-              Math.round(Number(s.xpi_score)),
+              Math.round(Number(s.cpi_score)),
               Math.round(Number(s.access_score)),
               Math.round(Number(s.transit_score)),
               Math.round(Number(s.income_score)),

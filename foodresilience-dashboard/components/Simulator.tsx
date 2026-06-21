@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { scoreColor, type ResilienceRow } from '@/lib/hooks';
+import { scoreColor, type ResilienceRow } from '../hooks/StatesData';
 import styles from './Simulator.module.css';
 
 interface SimulatorProps {
