@@ -13,7 +13,7 @@ export interface StateData {
   division: string;
   population_2020: number;
   area_sq_miles: number;
-  xpi_score: number;
+  cpi_score: number;
   access_score: number;
   transit_score: number;
   income_score: number;
@@ -26,7 +26,7 @@ export interface TrendPoint {
   month_num: number;
   month_name: string;
   composite_score: number;
-  xpi_score: number;
+  cpi_score: number;
   access_score: number;
   transit_score: number;
   income_score: number;
@@ -139,7 +139,7 @@ export function useStateTrends(code: string | null) {
   return {
     trends,
     compositeArray: trends.map((t) => Number(t.composite_score)),
-    xpiArray: trends.map((t) => Number(t.xpi_score)),
+    xpiArray: trends.map((t) => Number(t.cpi_score)),
     accessArray: trends.map((t) => Number(t.access_score)),
     transitArray: trends.map((t) => Number(t.transit_score)),
     incomeArray: trends.map((t) => Number(t.income_score)),
@@ -229,7 +229,7 @@ export function stateDataToLegacy(s: StateData) {
   return {
     name: s.state_name,
     abbr: s.state_code,
-    xpiScore: Number(s.xpi_score),
+    cpiScore: Number(s.cpi_score),
     accessScore: Number(s.access_score),
     transitScore: Number(s.transit_score),
     incomeScore: Number(s.income_score),

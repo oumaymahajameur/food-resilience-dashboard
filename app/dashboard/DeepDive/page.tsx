@@ -49,7 +49,7 @@
     division: string;
     population_2020: number;
     area_sq_miles: number;
-    xpi_score: number;
+    cpi_score: number;
     access_score: number;
     transit_score: number;
     income_score: number;
@@ -61,7 +61,7 @@
   const YEARS = ["2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025"];
 
   const FACTOR_META = [
-    { key: "xpi_score",     label: "CPI",     full: "Price / CPI Pressure",  color: "#00e5ff", weight: 0.30 },
+    { key: "cpi_score",     label: "CPI",     full: "Price / CPI Pressure",  color: "#00e5ff", weight: 0.30 },
     { key: "access_score",  label: "ACCESS",  full: "Food Accessibility",    color: "#00ff9d", weight: 0.30 },
     { key: "transit_score", label: "TRANSIT", full: "Transit Density",       color: "#ff9500", weight: 0.20 },
     { key: "income_score",  label: "INCOME",  full: "Income Stability",      color: "#bf5fff", weight: 0.20 },
@@ -175,7 +175,7 @@
       <div>
         <div style={{ fontSize:11, color:"#3a6a8a", letterSpacing:3, marginBottom:10 }}>FACTOR GAUGES</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <DonutKPI value={Math.round(Number(state.xpi_score))}     color="#00e5ff" label="CPI"     sub="Price Pressure" />
+          <DonutKPI value={Math.round(Number(state.cpi_score))}     color="#00e5ff" label="CPI"     sub="Price Pressure" />
           <DonutKPI value={Math.round(Number(state.access_score))}  color="#00ff9d" label="ACCESS"  sub="Food Access" />
           <DonutKPI value={Math.round(Number(state.transit_score))} color="#ff9500" label="TRANSIT" sub="Density" />
           <DonutKPI value={Math.round(Number(state.income_score))}  color="#bf5fff" label="INCOME"  sub="Stability" />
@@ -197,7 +197,7 @@
       svg.selectAll("*").remove();
 
       const factors = [
-        { label: "CPI",     value: Math.round(Number(state.xpi_score)),     color: "#00e5ff" },
+        { label: "CPI",     value: Math.round(Number(state.cpi_score)),     color: "#00e5ff" },
         { label: "ACCESS",  value: Math.round(Number(state.access_score)),  color: "#00ff9d" },
         { label: "TRANSIT", value: Math.round(Number(state.transit_score)), color: "#ff9500" },
         { label: "INCOME",  value: Math.round(Number(state.income_score)),  color: "#bf5fff" },
@@ -206,7 +206,7 @@
 
       // National averages
       const natAvg = factors.map(f => {
-        const key = f.label === "CPI" ? "xpi_score" : f.label === "ACCESS" ? "access_score" : f.label === "TRANSIT" ? "transit_score" : "income_score";
+        const key = f.label === "CPI" ? "cpi_score" : f.label === "ACCESS" ? "access_score" : f.label === "TRANSIT" ? "transit_score" : "income_score";
         return Math.round(states.reduce((a, s) => a + Number(s[key as keyof DBState] ?? 50), 0) / Math.max(states.length, 1));
       });
 
@@ -297,7 +297,7 @@
       svg.selectAll("*").remove();
 
       const factors = [
-        { label: "CPI",     key: "xpi_score",     color: "#00e5ff" },
+        { label: "CPI",     key: "cpi_score",     color: "#00e5ff" },
         { label: "ACCESS",  key: "access_score",  color: "#00ff9d" },
         { label: "TRANSIT", key: "transit_score", color: "#ff9500" },
         { label: "INCOME",  key: "income_score",  color: "#bf5fff" },
@@ -629,7 +629,7 @@
       const iW = W - m.left - m.right, iH = H - m.top - m.bottom;
       const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
       const factors = [
-        { label: "CPI",     value: Math.round(Number(state.xpi_score)),     color: "#00e5ff", weight: 0.30 },
+        { label: "CPI",     value: Math.round(Number(state.cpi_score)),     color: "#00e5ff", weight: 0.30 },
         { label: "ACCESS",  value: Math.round(Number(state.access_score)),  color: "#00ff9d", weight: 0.30 },
         { label: "TRANSIT", value: Math.round(Number(state.transit_score)), color: "#ff9500", weight: 0.20 },
         { label: "INCOME",  value: Math.round(Number(state.income_score)),  color: "#bf5fff", weight: 0.20 },
@@ -681,7 +681,7 @@
   // ─── HEATMAP GRID ─────────────────────────────────────────────────────────────
   function HeatmapGrid({ states }: { states: DBState[] }) {
     const regions = ["Northeast","Midwest","South","West"];
-    const factors = ["xpi_score","access_score","transit_score","income_score"];
+    const factors = ["cpi_score","access_score","transit_score","income_score"];
     const fLabels = ["CPI","ACCESS","TRANSIT","INCOME"];
     const fColors = ["#00e5ff","#00ff9d","#ff9500","#bf5fff"];
     return (
@@ -719,7 +719,7 @@
     const vsAvg = composite - regionAvg;
     const tier = scoreTier(composite);
     const insights: { icon:string; text:string; color:string }[] = [];
-    if (Number(state.xpi_score)<45) insights.push({icon:"⚠",text:"CPI pressure above critical threshold",color:"#ff3355"});
+    if (Number(state.cpi_score)<45) insights.push({icon:"⚠",text:"CPI pressure above critical threshold",color:"#ff3355"});
     if (Number(state.access_score)<45) insights.push({icon:"⚠",text:"Food access severely limited",color:"#ff3355"});
     if (Number(state.transit_score)>=65) insights.push({icon:"✓",text:"Strong transit infrastructure",color:"#00d97e"});
     if (Number(state.income_score)>=65) insights.push({icon:"✓",text:"Income stability above average",color:"#00d97e"});
@@ -991,7 +991,7 @@
     if (errorStates) return <ErrorView msg={errorStates} />;
 
     const composite    = selectedState?Math.round(Number(selectedState.composite_score)):50;
-    const xpiScore     = selectedState?Math.round(Number(selectedState.xpi_score)):50;
+    const xpiScore     = selectedState?Math.round(Number(selectedState.cpi_score)):50;
     const accessScore  = selectedState?Math.round(Number(selectedState.access_score)):50;
     const transitScore = selectedState?Math.round(Number(selectedState.transit_score)):50;
     const incomeScore  = selectedState?Math.round(Number(selectedState.income_score)):50;

@@ -15,7 +15,7 @@ interface DBState {
   division: string;
   population_2020: number;
   area_sq_miles: number;
-  xpi_score: number;
+  cpi_score: number;
   access_score: number;
   transit_score: number;
   income_score: number;
@@ -521,7 +521,7 @@ function ExportModal({ type, format, states, stats, year, onClose, reportConfig 
         const score = Math.round(Number(s.composite_score));
         const tier = score >= 65 ? "HIGH" : score >= 45 ? "MODERATE" : "CRITICAL";
         return [i+1, s.state_code, `"${s.state_name}"`, s.region, s.division, s.population_2020,
-          s.area_sq_miles, Math.round(Number(s.xpi_score)), Math.round(Number(s.access_score)),
+          s.area_sq_miles, Math.round(Number(s.cpi_score)), Math.round(Number(s.access_score)),
           Math.round(Number(s.transit_score)), Math.round(Number(s.income_score)), score, tier, year].join(",");
       });
       const csv = [headers.join(","), ...rows].join("\n");
@@ -531,7 +531,7 @@ function ExportModal({ type, format, states, stats, year, onClose, reportConfig 
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     } else {
       // Build report with year context
-      const html = buildReport(type, states, stats, year, reportConfig);
+    const html = buildReport(type, states, stats);
       const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = `fri_${slug}_${year}_${date}.html`;
