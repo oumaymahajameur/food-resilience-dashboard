@@ -28,14 +28,9 @@ export default function Dashboard() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050b18" }}>
-      {/* <Topbar /> */}
-
+      <Topbar />
       <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 8 }}>
-
-        {/* ── KPI Cards ── */}
         <KpiGrid />
-
-        {/* ── Map + Alerts ── */}
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
           <div style={{ ...panel, minHeight: 300, display: "flex", flexDirection: "column" }}>
             <div style={panelTitle}>WORLD RESILIENCE MAP</div>
@@ -43,7 +38,6 @@ export default function Dashboard() {
               <WorldMap />
             </div>
           </div>
-
           <div style={{ ...panel, minHeight: 300 }}>
             <div style={panelTitle}>AI ALERT FEED</div>
             <div style={{ padding: 10 }}>
@@ -51,7 +45,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
