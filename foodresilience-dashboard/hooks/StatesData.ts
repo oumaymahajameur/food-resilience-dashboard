@@ -1,9 +1,6 @@
-// hooks/useStatesData.ts
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export interface StateData {
   state_id: number;
@@ -56,6 +53,20 @@ export function scoreColor(score: number): string {
   return "#ef233c";
 }
 
+function mapState(s: any): StateData {
+  const scores = Array.isArray(s.fact_resilience_scores)
+    ? s.fact_resilience_scores[0]
+    : s.fact_resilience_scores;
+  return {
+    ...s,
+    composite_score: scores?.resilience_score ?? 0,
+    cpi_score:       scores?.cpi_score        ?? 0,
+    access_score:    scores?.access_score      ?? 0,
+    transit_score:   scores?.transit_score     ?? 0,
+    income_score:    scores?.econ_score        ?? 0,
+  };
+}
+
 export function useAllStates() {
   const [states, setStates] = useState<StateData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,9 +76,9 @@ export function useAllStates() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/etats`)
+    fetch(`/api/etats`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((data: StateData[]) => { setStates(data); })
+      .then((data: any[]) => { setStates(data.map(mapState)); })
       .catch((err) => { console.error(err); setError(err.message); })
       .finally(() => { setLoading(false); });
   }, [trigger]);
@@ -85,9 +96,9 @@ export function useStateByCode(code: string | null) {
     if (!code) return;
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/etats/${code}`)
+    fetch(`/api/etats/${code}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((data: StateData) => { setState(data); })
+      .then((data: any) => { setState(mapState(data)); })
       .catch((err) => { console.error(err); setError(err.message); })
       .finally(() => { setLoading(false); });
   }, [code]);
@@ -104,7 +115,7 @@ export function useStateTrends(code: string | null) {
     if (!code) return;
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/etats/${code}/trends`)
+    fetch(`/api/etats/${code}/trends`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data: TrendPoint[]) => { setTrends(data); })
       .catch((err) => { console.error(err); setError(err.message); })
@@ -114,10 +125,10 @@ export function useStateTrends(code: string | null) {
   return {
     trends,
     compositeArray: trends.map((t) => Number(t.composite_score)),
-    cpiArray: trends.map((t) => Number(t.cpi_score)),
-    accessArray: trends.map((t) => Number(t.access_score)),
-    transitArray: trends.map((t) => Number(t.transit_score)),
-    incomeArray: trends.map((t) => Number(t.income_score)),
+    cpiArray:       trends.map((t) => Number(t.cpi_score)),
+    accessArray:    trends.map((t) => Number(t.access_score)),
+    transitArray:   trends.map((t) => Number(t.transit_score)),
+    incomeArray:    trends.map((t) => Number(t.income_score)),
     loading,
     error,
   };
@@ -132,7 +143,7 @@ export function useNationalStats() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/stats/national`)
+    fetch(`/api/stats/national`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data: NationalStats) => { setStats(data); })
       .catch((err) => { console.error(err); setError(err.message); })
@@ -154,14 +165,23 @@ export function useDashboardData() {
     setLoading(true);
     setError(null);
     Promise.all([
-      fetch(`${API_BASE}/api/etats`).then((r) => {
-        if (!r.ok) throw new Error(`/api/etats HTTP ${r.status}`);
-        return r.json() as Promise<StateData[]>;
-      }),
-      fetch(`${API_BASE}/api/stats/national`).then((r) => {
-        if (!r.ok) throw new Error(`/api/stats/national HTTP ${r.status}`);
-        return r.json() as Promise<NationalStats>;
-      }),
+      fetch(`/api/etats`)
+        .then((r) => { if (!r.ok) throw new Error(`/api/etats HTTP ${r.status}`); return r.json(); })
+        .then((data: any[]) => data.map(mapState) as StateData[]),
+      fetch(`/api/stats/national`)
+        .then((r) => { if (!r.ok) throw new Error(`/api/stats/national HTTP ${r.status}`); return r.json(); })
+        .then((data: any) => {
+          const sorted = data;
+          return {
+            avg_score:      sorted.avg_score,
+            max_score:      sorted.max_score,
+            min_score:      sorted.min_score,
+            dispersion:     sorted.dispersion,
+            critical_count: sorted.critical_count,
+            top_state_code: sorted.top_state_code ?? "",
+            top_state_name: sorted.top_state_name ?? "",
+          } as NationalStats;
+        }),
     ])
       .then(([statesData, nationalData]) => { setStates(statesData); setNational(nationalData); })
       .catch((err) => { console.error(err); setError(err.message); })
@@ -174,14 +194,14 @@ export function useDashboardData() {
 
 export function stateDataToLegacy(s: StateData) {
   return {
-    name: s.state_name,
-    abbr: s.state_code,
-    cpiScore: Number(s.cpi_score),
+    name:        s.state_name,
+    abbr:        s.state_code,
+    cpiScore:    Number(s.cpi_score),
     accessScore: Number(s.access_score),
-    transitScore: Number(s.transit_score),
+    transitScore:Number(s.transit_score),
     incomeScore: Number(s.income_score),
-    composite: Number(s.composite_score),
-    population: s.population_2020,
+    composite:   Number(s.composite_score),
+    population:  s.population_2020,
     alerts: s.alert_type
       ? [{ type: s.alert_type, msg: s.alert_message ?? "" }]
       : [{ type: "OK", msg: "Stable performance" }],
